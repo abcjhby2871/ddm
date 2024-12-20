@@ -28,7 +28,6 @@ def main(args):
             "models":["v~dif*C(Third, Treatment('mid'))*C(Info, Treatment('MV'))","a~C(Third, Treatment('mid'))*C(Info, Treatment('MV'))"],
             "include":('v','a','t')
         }
-        include=('v','a','t')
     elif version==3:
         kwargs={"models":["v~dif+C( Third,Treatment('mid'))*C(Info, Treatment('MV'))"],
                "include":('v','t')}
