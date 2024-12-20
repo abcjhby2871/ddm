@@ -10,6 +10,7 @@ pip install psychopy
 ```
 ## Usage
 ### model fit
+We provide three versions to fit the models.
 ```
 cd model-fit 
 python main.py {experiment number} -ve {model version}
