@@ -13,7 +13,7 @@ pip install psychopy
 We provide three versions to fit the models.
 ```
 cd model-fit 
-python main.py {experiment number} -ve {model version}
+python main.py {save path} {experiment number} -ve {model version}
 ```
 ### visualization and statistics
 explore in [hddm.ipynb](./model-fit/hddm.ipynb)
