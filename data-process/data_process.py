@@ -1,9 +1,7 @@
 import argparse
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
 
 
 NUMERIC_COLS = ["reaction_time", "value_difference", "CV"]
@@ -28,9 +26,22 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _load_plot_dependencies() -> tuple:
+    try:
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "Plotting dependencies are missing. Install matplotlib and seaborn to use --show-plots."
+        ) from exc
+    return plt, sns
+
+
 def _plot_missing(df: pd.DataFrame, title: str, show_plots: bool) -> None:
     if not show_plots:
         return
+
+    plt, sns = _load_plot_dependencies()
     plt.figure(figsize=(10, 6))
     sns.heatmap(df.isnull(), cbar=False, cmap="viridis", yticklabels=False)
     plt.title(title)
@@ -40,8 +51,14 @@ def _plot_missing(df: pd.DataFrame, title: str, show_plots: bool) -> None:
 def _plot_box(df: pd.DataFrame, title: str, show_plots: bool) -> None:
     if not show_plots:
         return
+
+    numeric_cols = [col for col in NUMERIC_COLS if col in df.columns]
+    if not numeric_cols:
+        return
+
+    plt, sns = _load_plot_dependencies()
     plt.figure(figsize=(10, 6))
-    sns.boxplot(data=df[NUMERIC_COLS])
+    sns.boxplot(data=df[numeric_cols])
     plt.title(title)
     plt.show()
 
@@ -68,7 +85,7 @@ def clean_data(df: pd.DataFrame, show_plots: bool = False) -> pd.DataFrame:
 
     _plot_box(df, "箱型图 - 异常值检测", show_plots)
 
-    for col in NUMERIC_COLS:
+    for col in [col for col in NUMERIC_COLS if col in df.columns]:
         mean = df[col].mean()
         std = df[col].std()
         df = df[df[col].between(mean - 3 * std, mean + 3 * std)]

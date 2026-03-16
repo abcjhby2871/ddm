@@ -2,7 +2,7 @@
 ## Install
 ### model fit
 ```
-pip install jupyter hhdm pandas numpy  matplotlib arviz seaborn 
+pip install jupyter hddm pandas numpy  matplotlib arviz seaborn 
 ```
 ### experiment gui
 ```
