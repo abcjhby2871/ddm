@@ -1,66 +1,113 @@
+import argparse
+from pathlib import Path
+
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-i = 1 # 2,3
-df = pd.read_csv(f"exp{i}.csv")
 
-# 显示数据的前几行，检查数据结构
-print("数据预览：")
-print(df.head())
+NUMERIC_COLS = ["reaction_time", "value_difference", "CV"]
+CATEGORICAL_COLS = ["category", "correct"]
 
-# 2. 缺失值处理
-# 查看缺失值
-print("\n缺失值统计：")
-print(df.isnull().sum())
 
-# 可视化缺失值
-plt.figure(figsize=(10, 6))
-sns.heatmap(df.isnull(), cbar=False, cmap="viridis", yticklabels=False)
-plt.title("缺失值热图")
-plt.show()
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Clean experiment CSV data for DDM modeling.")
+    parser.add_argument("--input", dest="input_path", help="Path to the raw csv file.")
+    parser.add_argument("--output", dest="output_path", help="Path to save cleaned csv file.")
+    parser.add_argument(
+        "--experiment-id",
+        type=int,
+        default=1,
+        help="Experiment id used when --input/--output are not provided (default: 1).",
+    )
+    parser.add_argument(
+        "--show-plots",
+        action="store_true",
+        help="Display diagnostic plots while processing data.",
+    )
+    return parser.parse_args()
 
-# 对数值型列填充均值，对类别型列填充众数
-df['reaction_time'].fillna(df['reaction_time'].mean(), inplace=True)
-df['value_difference'].fillna(df['value_difference'].mean(), inplace=True)
-df['CV'].fillna(df['CV'].mean(), inplace=True)
 
-df['category'].fillna(df['category'].mode()[0], inplace=True)
-df['correct'].fillna(df['correct'].mode()[0], inplace=True)
+def _load_plot_dependencies() -> tuple:
+    try:
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "Plotting dependencies are missing. Install matplotlib and seaborn to use --show-plots."
+        ) from exc
+    return plt, sns
 
-# 缺失值处理后，查看缺失值统计
-print("\n缺失值处理后统计：")
-print(df.isnull().sum())
 
-# 可视化缺失值处理后的结果
-plt.figure(figsize=(10, 6))
-sns.heatmap(df.isnull(), cbar=False, cmap="viridis", yticklabels=False)
-plt.title("缺失值处理后的热图")
-plt.show()
+def _plot_missing(df: pd.DataFrame, title: str, show_plots: bool) -> None:
+    if not show_plots:
+        return
 
-# 3. 异常值处理
-# 使用箱型图检测异常值
-plt.figure(figsize=(10, 6))
-sns.boxplot(data=df[['reaction_time', 'value_difference', 'CV']])
-plt.title("箱型图 - 异常值检测")
-plt.show()
+    plt, sns = _load_plot_dependencies()
+    plt.figure(figsize=(10, 6))
+    sns.heatmap(df.isnull(), cbar=False, cmap="viridis", yticklabels=False)
+    plt.title(title)
+    plt.show()
 
-# 使用标准差法检测异常值
-for col in ['reaction_time', 'value_difference', 'CV']:
-    mean = df[col].mean()
-    std = df[col].std()
-    # 超过3个标准差的值被视为异常值
-    df = df[df[col].between(mean - 3*std, mean + 3*std)]
 
-# 处理异常值后，绘制处理后的箱型图
-plt.figure(figsize=(10, 6))
-sns.boxplot(data=df[['reaction_time', 'value_difference', 'CV']])
-plt.title("箱型图 - 异常值处理后的数据")
-plt.show()
+def _plot_box(df: pd.DataFrame, title: str, show_plots: bool) -> None:
+    if not show_plots:
+        return
 
-# 4. 保存清洗后的数据
-df.to_csv(f"cleaned_exp{i}.csv", index=False)
+    numeric_cols = [col for col in NUMERIC_COLS if col in df.columns]
+    if not numeric_cols:
+        return
 
-# 输出清洗后的数据
-print("清洗后的数据预览：")
-print(df.head())
+    plt, sns = _load_plot_dependencies()
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(data=df[numeric_cols])
+    plt.title(title)
+    plt.show()
+
+
+def clean_data(df: pd.DataFrame, show_plots: bool = False) -> pd.DataFrame:
+    print("数据预览：")
+    print(df.head())
+
+    print("\n缺失值统计：")
+    print(df.isnull().sum())
+    _plot_missing(df, "缺失值热图", show_plots)
+
+    for col in NUMERIC_COLS:
+        if col in df.columns:
+            df[col] = df[col].fillna(df[col].mean())
+
+    for col in CATEGORICAL_COLS:
+        if col in df.columns:
+            df[col] = df[col].fillna(df[col].mode()[0])
+
+    print("\n缺失值处理后统计：")
+    print(df.isnull().sum())
+    _plot_missing(df, "缺失值处理后的热图", show_plots)
+
+    _plot_box(df, "箱型图 - 异常值检测", show_plots)
+
+    for col in [col for col in NUMERIC_COLS if col in df.columns]:
+        mean = df[col].mean()
+        std = df[col].std()
+        df = df[df[col].between(mean - 3 * std, mean + 3 * std)]
+
+    _plot_box(df, "箱型图 - 异常值处理后的数据", show_plots)
+
+    print("清洗后的数据预览：")
+    print(df.head())
+    return df
+
+
+def main() -> None:
+    args = parse_args()
+
+    input_path = Path(args.input_path or f"exp{args.experiment_id}.csv")
+    output_path = Path(args.output_path or f"cleaned_exp{args.experiment_id}.csv")
+
+    df = pd.read_csv(input_path)
+    cleaned_df = clean_data(df, show_plots=args.show_plots)
+    cleaned_df.to_csv(output_path, index=False)
+    print(f"清洗后的数据已保存到: {output_path}")
+
+
+if __name__ == "__main__":
+    main()

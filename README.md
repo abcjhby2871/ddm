@@ -2,7 +2,7 @@
 ## Install
 ### model fit
 ```
-pip install jupyter hhdm pandas numpy  matplotlib arviz seaborn 
+pip install jupyter hddm pandas numpy  matplotlib arviz seaborn 
 ```
 ### experiment gui
 ```
@@ -12,7 +12,7 @@ pip install psychopy
 ### data process 
 ```
 cd data-process/data
-python ../data-process.py
+python ../data_process.py --experiment-id 1
 ```
 ### model fit
 We provide three versions to fit the models.
